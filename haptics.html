@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GoalFlow — haptics check</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 24px 20px calc(env(safe-area-inset-bottom) + 24px);
+    background: #18181b; color: #e4e4e7;
+    font: 17px/1.5 -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; color: #a1a1aa; font-size: 15px; }
+  button, .swatch {
+    display: block; width: 100%; margin: 0 0 12px; padding: 16px;
+    border: 1px solid #3f3f46; border-radius: 10px;
+    background: #27272a; color: #e4e4e7; font: inherit; text-align: left;
+  }
+  b { display: block; font-weight: 600; }
+  small { color: #a1a1aa; }
+  .swatch { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  #facts { margin-top: 24px; padding: 14px; border-radius: 10px; background: #27272a;
+           font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: #a1a1aa;
+           white-space: pre-wrap; word-break: break-word; }
+</style>
+
+<h1>Haptics check</h1>
+<p class="sub">Press each one. Tell me which numbers you can feel.</p>
+
+<button id="one"><b>1 — navigator.vibrate</b><small>The real API. Android only, as far as anyone knows.</small></button>
+
+<button id="two"><b>2 — hidden switch, clicked by code</b><small>What the slot machine does now.</small></button>
+
+<label class="swatch">
+  <span><b>3 — a real switch, tapped by you</b><small>If this one is dead, no web page can buzz this phone.</small></span>
+  <input id="three" type="checkbox" switch>
+</label>
+
+<button id="four"><b>4 — visible switch, clicked by code</b><small>Separates "hidden" from "not a real tap".</small></button>
+<label class="swatch"><span><small>the switch button 4 flips</small></span><input id="four-box" type="checkbox" switch></label>
+
+<button id="five"><b>5 — the app's own motor, exactly as it is built</b><small>Same element, same styles the app gives it. If 2 buzzes and this does not, the app's stylesheet is the culprit.</small></button>
+
+<div id="facts"></div>
+
+<script>
+  // 2 — the hidden motor, exactly as the app builds it.
+  const hidden = document.createElement('label');
+  hidden.ariaHidden = 'true';
+  hidden.style.cssText =
+    'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.setAttribute('switch', '');
+  hidden.appendChild(box);
+  document.body.appendChild(hidden);
+
+  document.getElementById('one').onclick = () => {
+    const ok = typeof navigator.vibrate === 'function' && navigator.vibrate(200);
+    alert(typeof navigator.vibrate === 'function'
+      ? (ok ? 'vibrate() accepted — feel anything?' : 'vibrate() exists but refused')
+      : 'navigator.vibrate does not exist on this phone');
+  };
+  document.getElementById('two').onclick = () => hidden.click();
+
+  // 5 — a byte-for-byte copy of what src/phone/haptics.ts builds.
+  const motor = document.createElement('label');
+  motor.ariaHidden = 'true';
+  motor.style.cssText =
+    'position:fixed;left:0;bottom:0;width:8px;height:8px;opacity:0.01;z-index:-1;overflow:hidden';
+  const motorBox = document.createElement('input');
+  motorBox.type = 'checkbox';
+  motorBox.setAttribute('switch', '');
+  motorBox.tabIndex = -1;
+  motorBox.style.cssText = '-webkit-appearance:auto;appearance:auto;margin:0';
+  motor.appendChild(motorBox);
+  document.body.appendChild(motor);
+  document.getElementById('five').onclick = () => {
+    const before = motorBox.checked;
+    motor.click();
+    if (motorBox.checked === before) motorBox.click();
+  };
+  document.getElementById('four').onclick = () => document.getElementById('four-box').click();
+
+  // Does this WebKit even know what a switch is? An unsupported attribute
+  // leaves an ordinary checkbox, which is silent by design.
+  const probe = document.createElement('input');
+  probe.type = 'checkbox';
+  probe.setAttribute('switch', '');
+  document.getElementById('facts').textContent = [
+    'switch attribute known: ' + ('switch' in probe ? 'yes' : 'no (this WebKit is too old)'),
+    'navigator.vibrate: ' + (typeof navigator.vibrate === 'function' ? 'present' : 'absent'),
+    'standalone (home screen): ' + (navigator.standalone === true ? 'yes' : 'no'),
+    'ua: ' + navigator.userAgent,
+  ].join('\n');
+</script>
